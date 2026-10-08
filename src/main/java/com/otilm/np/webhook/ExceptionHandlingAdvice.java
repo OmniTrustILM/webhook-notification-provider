@@ -1,7 +1,5 @@
 package com.otilm.np.webhook;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.otilm.api.exception.AlreadyExistException;
 import com.otilm.api.exception.NotDeletableException;
 import com.otilm.api.exception.NotFoundException;
@@ -27,6 +25,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 @RestControllerAdvice
 public class ExceptionHandlingAdvice {
@@ -81,8 +81,8 @@ public class ExceptionHandlingAdvice {
         if (cause instanceof InvalidFormatException exCause) {
             // Jackson does not guarantee either a reference path or a rejected value, and this
             // handler must still answer with a bad request rather than fail itself.
-            final List<JsonMappingException.Reference> path = exCause.getPath();
-            final String field = path.isEmpty() ? null : path.get(0).getFieldName();
+            final List<JacksonException.Reference> path = exCause.getPath();
+            final String field = path.isEmpty() ? null : path.get(0).getPropertyName();
             final Object rejectedValue = exCause.getValue();
             errorMessage = new ErrorMessageDto(field, exCause.getClass().getSimpleName(),
                     rejectedValue != null ? rejectedValue.toString() : null);
