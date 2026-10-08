@@ -1,0 +1,95 @@
+{
+  "status" : 200,
+  "contentType" : "application/json",
+  "body" : [ {
+    "constraints" : [ {
+      "data" : "https?://.*",
+      "description" : "Webhook URL",
+      "errorMessage" : "Invalid webhook URL format",
+      "type" : "regExp"
+    } ],
+    "content" : [ {
+      "data" : "https://example.com/webhook",
+      "reference" : "https://example.com/webhook"
+    } ],
+    "contentType" : "string",
+    "description" : "Webhook URL to send the event data to",
+    "name" : "data_webhookUrl",
+    "properties" : {
+      "extensibleList" : false,
+      "group" : null,
+      "label" : "Webhook URL",
+      "list" : false,
+      "multiSelect" : false,
+      "protectionLevel" : "none",
+      "readOnly" : false,
+      "required" : true,
+      "resource" : null,
+      "visible" : true
+    },
+    "type" : "data",
+    "uuid" : "3b8a11b3-a59d-427c-9491-56c8ce27cee7",
+    "version" : 2
+  }, {
+    "content" : [ {
+      "data" : "The content type of the data to be sent to the webhook. The following content types are supported:\n- `RAW_JSON` - will send the data as raw JSON to the specified webhook URL\n- `JSON` - prepares the data in JSON format according to the specified template\n- `XML` - prepares the data in XML format according to the specified template\n\nThe template support FreeMarker syntax with variables that can be used to build the content dynamically.\n",
+      "reference" : null
+    } ],
+    "contentType" : "text",
+    "description" : "Information about the content type",
+    "name" : "info_contentType",
+    "properties" : {
+      "group" : null,
+      "label" : "Content type information",
+      "visible" : true
+    },
+    "type" : "info",
+    "uuid" : "5f2ef01f-4cc3-441e-be78-5dfdf2c4c2d9",
+    "version" : 2
+  }, {
+    "content" : [ {
+      "data" : "RAW_JSON",
+      "reference" : "raw_json"
+    }, {
+      "data" : "JSON",
+      "reference" : "json"
+    }, {
+      "data" : "XML",
+      "reference" : "xml"
+    } ],
+    "contentType" : "string",
+    "description" : "Content type of the data to be sent",
+    "name" : "data_contentType",
+    "properties" : {
+      "extensibleList" : false,
+      "group" : null,
+      "label" : "Content type",
+      "list" : true,
+      "multiSelect" : false,
+      "protectionLevel" : "none",
+      "readOnly" : false,
+      "required" : true,
+      "resource" : null,
+      "visible" : true
+    },
+    "type" : "data",
+    "uuid" : "b104d74d-8a54-4aa3-9e00-9c535f8bb80c",
+    "version" : 2
+  }, {
+    "attributeCallback" : {
+      "callbackContext" : "/v1/notificationProvider/callbacks/template/{contentType}/attributes",
+      "callbackMethod" : "GET",
+      "dependsOn" : null,
+      "mappings" : [ {
+        "from" : "data_contentType.data",
+        "targets" : [ "pathVariable" ],
+        "to" : "contentType"
+      } ]
+    },
+    "description" : "Content template for the webhook to be sent in selected type",
+    "name" : "group_contentTemplate",
+    "type" : "group",
+    "uuid" : "f3b9ae81-279b-4886-a097-a8e08c2c356b",
+    "version" : 2
+  } ]
+}

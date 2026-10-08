@@ -1,0 +1,5 @@
+{
+  "status" : 422,
+  "contentType" : "application/json",
+  "body" : [ "Value ftp://example.com of attribute Webhook URL doesn't match regex https?://.*" ]
+}

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<notification event="certificate_status_changed" resource="certificates">
+  <certificate status="revoked">CN=wire.example.com, O=Wire Golden, C=CZ</certificate>
+  <escapes>quote &quot; backslash \ slash / tab 	 newline 
+ &lt;tag&gt; &amp; &apos;apos&apos;</escapes>
+  <recipient email="alice@example.com">Alice Operator</recipient>
+  <recipient email="bob@example.com">Bob Auditor</recipient>
+</notification>

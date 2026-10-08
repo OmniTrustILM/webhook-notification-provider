@@ -1,0 +1,84 @@
+{
+  "recipients": [
+    {
+      "name": "Alice Operator",
+      "email": "alice@example.com",
+      "mappedAttributes": [
+        {
+          "uuid": "5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d0e",
+          "name": "phone",
+          "contentType": "string",
+          "content": [{"reference": "mobile", "data": "+420 123 456 789"}],
+          "version": "v2"
+        }
+      ]
+    },
+    {
+      "name": "Bob Auditor",
+      "email": "bob@example.com",
+      "mappedAttributes": []
+    }
+  ],
+  "eventType": "Certificate validation status changed",
+  "event": "certificate_status_changed",
+  "resource": "certificates",
+  "notificationData": {
+    "certificateUuid": "0f1e2d3c-4b5a-4968-8776-655443322110",
+    "subjectDn": "CN=wire.example.com, O=Wire Golden, C=CZ",
+    "serialNumber": "0a1b2c3d4e5f",
+    "oldStatus": "valid",
+    "newStatus": "revoked",
+    "notAfter": "2027-01-31T12:00:00.000+00:00",
+    "daysLeft": 30,
+    "weight": 0.75,
+    "large": 12345678901234567890,
+    "exponent": 1.5e21,
+    "flags": [true, false, null],
+    "nothing": null,
+    "nested": {
+      "unicode": "Žluťoučký kůň úpěl ďábelské ódy ✓",
+      "escapes": "quote \" backslash \\ slash / tab \t newline \n <tag> & 'apos'",
+      "control": "\u0001\u001f",
+      "empty": {},
+      "list": []
+    }
+  },
+  "objectData": {
+    "subject": {
+      "uuid": "0f1e2d3c-4b5a-4968-8776-655443322110",
+      "name": "wire.example.com",
+      "resource": "certificates"
+    },
+    "customAttributes": {
+      "department": {
+        "name": "department",
+        "label": "Department",
+        "contentType": "string",
+        "values": ["PKI", {"nested": 1}],
+        "sourceObjects": [{"uuid": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d", "name": "Default RA profile"}]
+      }
+    },
+    "metadata": [
+      {
+        "connectorName": "EJBCA",
+        "sourceObjectType": "raProfiles",
+        "attributes": {
+          "endEntityProfile": {
+            "name": "endEntityProfile",
+            "label": "End entity profile",
+            "contentType": "string",
+            "values": ["ENDUSER"]
+          }
+        }
+      }
+    ],
+    "associations": [
+      {"uuid": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e", "name": "Default group", "resource": "groups"},
+      {"uuid": "3c4d5e6f-7a8b-4c9d-8e0f-2a3b4c5d6e7f", "name": "alice", "resource": "users"}
+    ],
+    "content": {
+      "format": "X509_DER_BASE64",
+      "data": "MIIBszCCAVmgAwIBAgIUWireGoldenCertificateBytesAAAAAAAAAAAA"
+    }
+  }
+}

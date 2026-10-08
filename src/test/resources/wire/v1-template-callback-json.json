@@ -1,0 +1,31 @@
+{
+  "status" : 200,
+  "contentType" : "application/json",
+  "body" : [ {
+    "content" : [ {
+      "data" : {
+        "code" : null,
+        "language" : "json"
+      },
+      "reference" : null
+    } ],
+    "contentType" : "codeblock",
+    "description" : "Content template of the data to be sent",
+    "name" : "data_contentTemplate_json",
+    "properties" : {
+      "extensibleList" : false,
+      "group" : null,
+      "label" : "Content template",
+      "list" : false,
+      "multiSelect" : false,
+      "protectionLevel" : "none",
+      "readOnly" : false,
+      "required" : true,
+      "resource" : null,
+      "visible" : true
+    },
+    "type" : "data",
+    "uuid" : "77ddf598-724a-31d4-943b-79ee71c854c5",
+    "version" : 2
+  } ]
+}
