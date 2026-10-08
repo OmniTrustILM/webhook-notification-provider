@@ -9,7 +9,7 @@ Webhook Notification Provider — an ILM `Connector` implementing the
 configurations in PostgreSQL and delivers notifications as HTTP `POST` requests,
 either as the raw notification request or rendered through a FreeMarker template.
 
-Spring Boot 3 on Java 21, built with Maven.
+Spring Boot 4 on Java 21, built with Maven.
 
 ## Commands
 
