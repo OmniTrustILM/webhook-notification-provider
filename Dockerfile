@@ -1,3 +1,6 @@
+# The Maven repository the build reads; empty unless one is passed as the m2 build context.
+FROM scratch AS m2
+
 # Build stage
 FROM maven:3.9.16-eclipse-temurin-21 AS build
 
@@ -8,7 +11,7 @@ COPY docker /home/app/docker
 
 # Tests are not run here: the build and build_pr workflows already run the full suite once on
 # native hardware, and this stage is built once per target architecture.
-RUN mvn -f /home/app/pom.xml clean package -DskipTests
+RUN --mount=type=bind,from=m2,target=/root/.m2/repository,rw mvn -f /home/app/pom.xml clean package -DskipTests
 
 # Optimize stage
 FROM eclipse-temurin:21-jdk-alpine AS optimize
