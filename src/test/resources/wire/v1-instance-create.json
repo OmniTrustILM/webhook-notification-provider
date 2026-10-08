@@ -1,0 +1,61 @@
+{
+  "status" : 200,
+  "contentType" : "application/json",
+  "body" : {
+    "attributes" : [ {
+      "constraints" : [ {
+        "data" : "https?://.*",
+        "description" : "Webhook URL",
+        "errorMessage" : "Invalid webhook URL format",
+        "type" : "regExp"
+      } ],
+      "content" : [ {
+        "data" : "<receiver>",
+        "reference" : "<receiver>"
+      } ],
+      "contentType" : "string",
+      "description" : "Webhook URL to send the event data to",
+      "name" : "data_webhookUrl",
+      "properties" : {
+        "extensibleList" : false,
+        "group" : null,
+        "label" : "Webhook URL",
+        "list" : false,
+        "multiSelect" : false,
+        "protectionLevel" : "none",
+        "readOnly" : false,
+        "required" : true,
+        "resource" : null,
+        "visible" : true
+      },
+      "type" : "data",
+      "uuid" : "3b8a11b3-a59d-427c-9491-56c8ce27cee7",
+      "version" : 2
+    }, {
+      "content" : [ {
+        "data" : "RAW_JSON",
+        "reference" : "raw_json"
+      } ],
+      "contentType" : "string",
+      "description" : "Content type of the data to be sent",
+      "name" : "data_contentType",
+      "properties" : {
+        "extensibleList" : false,
+        "group" : null,
+        "label" : "Content type",
+        "list" : true,
+        "multiSelect" : false,
+        "protectionLevel" : "none",
+        "readOnly" : false,
+        "required" : true,
+        "resource" : null,
+        "visible" : true
+      },
+      "type" : "data",
+      "uuid" : "b104d74d-8a54-4aa3-9e00-9c535f8bb80c",
+      "version" : 2
+    } ],
+    "name" : "wire-lifecycle",
+    "uuid" : "<uuid>"
+  }
+}
