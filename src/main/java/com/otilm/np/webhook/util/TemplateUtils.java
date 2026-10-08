@@ -56,6 +56,23 @@ public class TemplateUtils {
     }
 
     /**
+     * Writes the raw webhook body with the mapper that builds the template data model, which keeps the body independent
+     * of the JSON library Spring's HTTP codecs default to.
+     */
+    public static String writeRequestAsJson(NotificationProviderNotifyRequestDto request) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(request);
+        } catch (JsonProcessingException e) {
+            // Jackson's message can quote request content, so only the exception type is reported.
+            logger
+                    .error("Failed to write the notification request as JSON: event={}, resource={}, error={}",
+                            request.getEvent(), request.getResource(), e.getClass().getSimpleName());
+            throw new NotificationException(
+                    "Failed to write the notification request as JSON (" + e.getClass().getSimpleName() + ")");
+        }
+    }
+
+    /**
      * Renders the given FreeMarker template against the notification request.
      *
      * <p>

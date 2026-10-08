@@ -144,10 +144,10 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
         String timestamp = String.valueOf(System.currentTimeMillis());
         String nonce = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
 
-        Object content;
+        String content;
         ContentType contentType = notificationInstance.getContentType();
         if (contentType == ContentType.RAW_JSON) {
-            content = request;
+            content = TemplateUtils.writeRequestAsJson(request);
         } else {
             String contentTemplate = notificationInstance.getContentTemplate();
             content = TemplateUtils.processFreeMarkerTemplate("webhook content", contentTemplate, request);

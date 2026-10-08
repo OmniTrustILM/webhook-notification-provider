@@ -106,6 +106,24 @@ class TemplateUtilsErrorTest {
         assertNoPayloadExposure(ex);
     }
 
+    @Test
+    void rawJsonWriteFailureExposesNoPayload() {
+        NotificationProviderNotifyRequestDto request = request();
+        request.setNotificationData(new Object() {
+            public String getCredential() {
+                return SENSITIVE_VALUE;
+            }
+
+            public String getBoom() {
+                throw new IllegalStateException("boom-" + SENSITIVE_VALUE);
+            }
+        });
+
+        NotificationException ex = assertThrows(NotificationException.class,
+                () -> TemplateUtils.writeRequestAsJson(request));
+        assertNoPayloadExposure(ex);
+    }
+
     /**
      * FreeMarker quotes the offending value in coercion failures, so the raw message must never reach the log or the
      * exception returned to the platform.
