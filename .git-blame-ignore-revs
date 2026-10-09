@@ -1,0 +1,8 @@
+# `git blame` skips the commits listed here.
+# Each line then keeps the author of its last real change.
+#
+# GitHub's blame view reads this file on its own.
+# Maven points `blame.ignoreRevsFile` at this file on every local build.
+
+# Format the sources with the shared Eclipse formatter
+74a329ec2f4c4e38257a6ba44415f1d0ea6b641c
