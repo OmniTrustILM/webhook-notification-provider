@@ -1,5 +1,9 @@
 package com.otilm.np.webhook.service.impl;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
 import com.otilm.api.exception.AlreadyExistException;
 import com.otilm.api.exception.NotFoundException;
 import com.otilm.api.model.client.attribute.RequestAttribute;
@@ -11,29 +15,15 @@ import com.otilm.api.model.common.attribute.v2.content.CodeBlockAttributeContent
 import com.otilm.api.model.common.attribute.v2.content.StringAttributeContentV2;
 import com.otilm.api.model.connector.notification.NotificationProviderInstanceDto;
 import com.otilm.api.model.connector.notification.NotificationProviderInstanceRequestDto;
-import com.otilm.np.webhook.attribute.Attributes;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.AppenderBase;
 import com.otilm.api.model.connector.notification.NotificationProviderNotifyRequestDto;
 import com.otilm.api.model.core.auth.Resource;
 import com.otilm.api.model.core.other.ResourceEvent;
+import com.otilm.np.webhook.attribute.Attributes;
 import com.otilm.np.webhook.attribute.ContentType;
 import com.otilm.np.webhook.dao.entity.NotificationInstance;
 import com.otilm.np.webhook.dao.repository.NotificationInstanceRepository;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.LoggerFactory;
-
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpServer;
-
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -45,6 +35,14 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -125,9 +123,9 @@ class NotificationInstanceServiceImplTest {
     }
 
     /**
-     * The delivery outcome is logged from the asynchronous callbacks, so a webhook that the
-     * receiver accepts must still report the send — covered against a real endpoint because the
-     * success callback is never reached when the endpoint is unreachable.
+     * The delivery outcome is logged from the asynchronous callbacks, so a webhook that the receiver accepts must still
+     * report the send — covered against a real endpoint because the success callback is never reached when the endpoint
+     * is unreachable.
      */
     @Test
     void sendNotification_acceptedByReceiver_logsTheCompletedSend() throws Exception {
@@ -151,10 +149,9 @@ class NotificationInstanceServiceImplTest {
     }
 
     /**
-     * The delivery headers and the request shape are this connector's contract with the receiver,
-     * so they are asserted against a real endpoint rather than assumed. The header names are
-     * spelled out literally: reading them through the production constants would keep passing if
-     * a constant's value changed.
+     * The delivery headers and the request shape are this connector's contract with the receiver, so they are asserted
+     * against a real endpoint rather than assumed. The header names are spelled out literally: reading them through the
+     * production constants would keep passing if a constant's value changed.
      */
     @Test
     void deliveryHeaderNamesAreTheDocumentedOnes() {
@@ -232,16 +229,15 @@ class NotificationInstanceServiceImplTest {
             assertEquals(ContentType.RAW_JSON.getContentHeader(), headers.get().getFirst("Content-Type"));
             assertNotNull(headers.get().getFirst(HEADER_TIMESTAMP));
             assertNotNull(headers.get().getFirst(HEADER_NONCE));
-            assertTrue(body.get().contains(SENSITIVE_VALUE),
-                    "raw delivery forwards the notification request as-is");
+            assertTrue(body.get().contains(SENSITIVE_VALUE), "raw delivery forwards the notification request as-is");
         } finally {
             receiver.stop(0);
         }
     }
 
     /**
-     * Payload logging is opt-in: raising the log level alone must never write the request into the
-     * logs, only the payload-free summary.
+     * Payload logging is opt-in: raising the log level alone must never write the request into the logs, only the
+     * payload-free summary.
      */
     @Test
     void sendNotification_debugLoggingWithoutOptIn_logsNoPayload() {
@@ -271,28 +267,26 @@ class NotificationInstanceServiceImplTest {
 
     @Test
     void describeSendFailure_transportErrorsKeepTheirMessage() {
-        assertTrue(NotificationInstanceServiceImpl.describeSendFailure(
+        assertTrue(NotificationInstanceServiceImpl
+                .describeSendFailure(
                         new com.otilm.np.webhook.exception.NotificationException("Failed to send webhook to x: 500"))
                 .contains("Failed to send webhook to x: 500"));
     }
 
     @Test
     void describeSendFailure_connectionErrorsKeepTheirMessage() {
-        org.springframework.web.reactive.function.client.WebClientRequestException transport =
-                new org.springframework.web.reactive.function.client.WebClientRequestException(
-                        new java.net.ConnectException("Connection refused: localhost:9"),
-                        org.springframework.http.HttpMethod.POST,
-                        java.net.URI.create("http://localhost:9"),
-                        new org.springframework.http.HttpHeaders());
+        org.springframework.web.reactive.function.client.WebClientRequestException transport = new org.springframework.web.reactive.function.client.WebClientRequestException(
+                new java.net.ConnectException("Connection refused: localhost:9"),
+                org.springframework.http.HttpMethod.POST, java.net.URI.create("http://localhost:9"),
+                new org.springframework.http.HttpHeaders());
         assertTrue(NotificationInstanceServiceImpl.describeSendFailure(transport).contains("Connection refused"));
     }
 
     @Test
     void describeSendFailure_otherErrorsAreReducedToTheirType() {
-        String described = NotificationInstanceServiceImpl.describeSendFailure(
-                new IllegalStateException("encoder failure exposing " + SENSITIVE_VALUE));
-        assertEquals("IllegalStateException", described,
-                "unknown failures must be reduced to the exception type");
+        String described = NotificationInstanceServiceImpl
+                .describeSendFailure(new IllegalStateException("encoder failure exposing " + SENSITIVE_VALUE));
+        assertEquals("IllegalStateException", described, "unknown failures must be reduced to the exception type");
     }
 
     @Test
@@ -303,13 +297,13 @@ class NotificationInstanceServiceImplTest {
         assertDoesNotThrow(() -> service.sendNotification(uuid, request()));
         // Delivery is asynchronous: wait for its outcome to be logged, otherwise the assertion
         // could run before the send path had a chance to log anything at all.
-        assertTrue(awaitLog(message -> message.startsWith("Error sending webhook to") || message.startsWith("Webhook sent to")),
+        assertTrue(awaitLog(
+                message -> message.startsWith("Error sending webhook to") || message.startsWith("Webhook sent to")),
                 "the asynchronous send outcome was never logged");
 
         assertTrue(formattedLogs().stream().noneMatch(message -> message.contains(SENSITIVE_VALUE)),
                 "default-level logs must not carry the request payload");
     }
-
 
     // ---- instance lifecycle ----
 
@@ -332,18 +326,20 @@ class NotificationInstanceServiceImplTest {
     }
 
     /**
-     * RAW_JSON forwards the notification request unchanged, so no content template is configured
-     * and the template attribute is absent from the request.
+     * RAW_JSON forwards the notification request unchanged, so no content template is configured and the template
+     * attribute is absent from the request.
      */
     @Test
     void createNotificationInstance_rawJsonNeedsNoContentTemplate() throws AlreadyExistException {
         when(repository.findByName(INSTANCE_NAME)).thenReturn(Optional.empty());
 
         NotificationProviderInstanceRequestDto request = instanceRequest();
-        request.setAttributes(List.of(
-                stringAttribute(Attributes.DATA_WEBHOOK_URL_UUID, Attributes.DATA_WEBHOOK_URL_NAME, WEBHOOK_URL),
-                stringAttribute(Attributes.DATA_CONTENT_TYPE_UUID, Attributes.DATA_CONTENT_TYPE_NAME,
-                        ContentType.RAW_JSON.name())));
+        request
+                .setAttributes(List
+                        .of(stringAttribute(Attributes.DATA_WEBHOOK_URL_UUID, Attributes.DATA_WEBHOOK_URL_NAME,
+                                WEBHOOK_URL),
+                                stringAttribute(Attributes.DATA_CONTENT_TYPE_UUID, Attributes.DATA_CONTENT_TYPE_NAME,
+                                        ContentType.RAW_JSON.name())));
 
         NotificationProviderInstanceDto dto = service.createNotificationInstance(request);
 
@@ -437,7 +433,8 @@ class NotificationInstanceServiceImplTest {
 
         List<NotificationProviderInstanceDto> instances = service.listNotificationInstances();
 
-        assertEquals(List.of("first", "second"), instances.stream().map(NotificationProviderInstanceDto::getName).toList());
+        assertEquals(List.of("first", "second"),
+                instances.stream().map(NotificationProviderInstanceDto::getName).toList());
     }
 
     @Test
@@ -455,8 +452,9 @@ class NotificationInstanceServiceImplTest {
 
     private NotificationProviderInstanceRequestDto instanceRequest() {
         CodeBlockAttributeContentV2 template = new CodeBlockAttributeContentV2();
-        template.setData(new CodeBlockAttributeContentData(ContentType.JSON.getLanguage(),
-                Base64.getEncoder().encodeToString(TEMPLATE_SOURCE.getBytes(StandardCharsets.UTF_8))));
+        template
+                .setData(new CodeBlockAttributeContentData(ContentType.JSON.getLanguage(),
+                        Base64.getEncoder().encodeToString(TEMPLATE_SOURCE.getBytes(StandardCharsets.UTF_8))));
 
         RequestAttributeV2 contentTemplate = new RequestAttributeV2();
         contentTemplate.setUuid(UUID.fromString(Attributes.getDataContentTemplateUuid(ContentType.JSON)));
@@ -464,10 +462,11 @@ class NotificationInstanceServiceImplTest {
         contentTemplate.setContentType(AttributeContentType.CODEBLOCK);
         contentTemplate.setContent(List.<BaseAttributeContentV2<?>>of(template));
 
-        List<RequestAttribute> attributes = List.of(
-                stringAttribute(Attributes.DATA_WEBHOOK_URL_UUID, Attributes.DATA_WEBHOOK_URL_NAME, WEBHOOK_URL),
-                stringAttribute(Attributes.DATA_CONTENT_TYPE_UUID, Attributes.DATA_CONTENT_TYPE_NAME, ContentType.JSON.name()),
-                contentTemplate);
+        List<RequestAttribute> attributes = List
+                .of(stringAttribute(Attributes.DATA_WEBHOOK_URL_UUID, Attributes.DATA_WEBHOOK_URL_NAME, WEBHOOK_URL),
+                        stringAttribute(Attributes.DATA_CONTENT_TYPE_UUID, Attributes.DATA_CONTENT_TYPE_NAME,
+                                ContentType.JSON.name()),
+                        contentTemplate);
 
         NotificationProviderInstanceRequestDto request = new NotificationProviderInstanceRequestDto();
         request.setName(INSTANCE_NAME);
@@ -494,8 +493,8 @@ class NotificationInstanceServiceImplTest {
     }
 
     /**
-     * Captures log output and can block until a message arrives. Webhook delivery is asynchronous,
-     * so the send outcome has to be awaited rather than read straight after the call returns.
+     * Captures log output and can block until a message arrives. Webhook delivery is asynchronous, so the send outcome
+     * has to be awaited rather than read straight after the call returns.
      */
     private static final class AwaitableLogAppender extends AppenderBase<ILoggingEvent> {
 

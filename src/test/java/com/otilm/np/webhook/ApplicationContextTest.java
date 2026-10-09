@@ -1,14 +1,13 @@
 package com.otilm.np.webhook;
 
+import com.otilm.api.model.client.connector.InfoResponse;
 import com.otilm.api.model.core.connector.EndpointDto;
 import com.otilm.api.model.core.connector.FunctionGroupCode;
-import com.otilm.api.model.client.connector.InfoResponse;
 import com.otilm.np.webhook.api.InfoControllerImpl;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -16,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Boots the application so that the endpoint inventory is built the way it is at runtime. The
- * inventory is populated from a context refresh event, so it cannot be exercised without a context.
+ * Boots the application so that the endpoint inventory is built the way it is at runtime. The inventory is populated
+ * from a context refresh event, so it cannot be exercised without a context.
  */
 @SpringBootTest
 class ApplicationContextTest {

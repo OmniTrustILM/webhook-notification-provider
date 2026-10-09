@@ -4,12 +4,15 @@ import com.otilm.api.model.common.attribute.common.BaseAttribute;
 import com.otilm.api.model.connector.notification.NotificationProviderInstanceDto;
 import com.otilm.core.util.AttributeDefinitionUtils;
 import com.otilm.np.webhook.attribute.ContentType;
-import jakarta.persistence.*;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 import java.util.Base64;
 import java.util.List;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 @Entity
 @Table(name = "notification_instance")
@@ -90,8 +93,12 @@ public class NotificationInstance extends UniquelyIdentified {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         NotificationInstance that = (NotificationInstance) o;
         return new EqualsBuilder().append(uuid, that.uuid).isEquals();
     }

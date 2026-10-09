@@ -1,6 +1,9 @@
 package com.otilm.np.webhook.attribute;
 
 import com.otilm.api.model.common.attribute.common.AttributeType;
+import com.otilm.api.model.common.attribute.common.callback.AttributeCallback;
+import com.otilm.api.model.common.attribute.common.callback.AttributeCallbackMapping;
+import com.otilm.api.model.common.attribute.common.callback.AttributeValueTarget;
 import com.otilm.api.model.common.attribute.common.constraint.BaseAttributeConstraint;
 import com.otilm.api.model.common.attribute.common.constraint.RegexpAttributeConstraint;
 import com.otilm.api.model.common.attribute.common.content.AttributeContentType;
@@ -8,21 +11,17 @@ import com.otilm.api.model.common.attribute.common.properties.DataAttributePrope
 import com.otilm.api.model.common.attribute.v2.DataAttributeV2;
 import com.otilm.api.model.common.attribute.v2.GroupAttributeV2;
 import com.otilm.api.model.common.attribute.v2.InfoAttributeV2;
-import com.otilm.api.model.common.attribute.common.callback.AttributeCallback;
-import com.otilm.api.model.common.attribute.common.callback.AttributeCallbackMapping;
-import com.otilm.api.model.common.attribute.common.callback.AttributeValueTarget;
 import com.otilm.api.model.common.attribute.v2.content.BaseAttributeContentV2;
 import com.otilm.api.model.common.attribute.v2.content.CodeBlockAttributeContentV2;
 import com.otilm.api.model.common.attribute.v2.content.StringAttributeContentV2;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.EnumSource;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -31,15 +30,14 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The platform identifies attributes by UUID and name, so these are part of the connector's
- * contract: a changed identifier orphans the configuration of every existing notification instance.
+ * The platform identifies attributes by UUID and name, so these are part of the connector's contract: a changed
+ * identifier orphans the configuration of every existing notification instance.
  */
 class AttributesTest {
 
     /**
-     * The platform stores attributes by UUID and name, so these literals are the connector's
-     * contract rather than a restatement of the constants: changing either orphans the
-     * configuration of every existing notification instance.
+     * The platform stores attributes by UUID and name, so these literals are the connector's contract rather than a
+     * restatement of the constants: changing either orphans the configuration of every existing notification instance.
      */
     @Test
     void attributeIdentifiersMatchTheEstablishedValues() {
@@ -116,14 +114,13 @@ class AttributesTest {
 
         // The reference carries the wire name of the content type, the data its enum name; the
         // instance configuration is resolved back to a ContentType from the data.
-        List<String> references = content.stream()
+        List<String> references = content
+                .stream()
                 .map(item -> assertInstanceOf(StringAttributeContentV2.class, item).getReference())
                 .toList();
         assertEquals(Arrays.stream(ContentType.values()).map(ContentType::getContentType).toList(), references);
 
-        List<String> data = content.stream()
-                .map(item -> String.valueOf(item.getData()))
-                .toList();
+        List<String> data = content.stream().map(item -> String.valueOf(item.getData())).toList();
         assertEquals(Arrays.stream(ContentType.values()).map(ContentType::name).toList(), data);
 
         for (String value : data) {
@@ -166,22 +163,21 @@ class AttributesTest {
         assertTrue(attribute.getProperties().isRequired());
         assertFalse(attribute.getProperties().isList());
 
-        CodeBlockAttributeContentV2 content =
-                assertInstanceOf(CodeBlockAttributeContentV2.class, attribute.getContent().get(0));
+        CodeBlockAttributeContentV2 content = assertInstanceOf(CodeBlockAttributeContentV2.class,
+                attribute.getContent().get(0));
         assertEquals(contentType.getLanguage(), content.getData().getLanguage());
     }
 
     /**
-     * The template attribute identifiers are derived, but they still identify attributes in the
-     * platform database, so they are pinned here to the values the connector has always produced.
-     * A change to the derivation would orphan the template of every configured instance.
+     * The template attribute identifiers are derived, but they still identify attributes in the platform database, so
+     * they are pinned here to the values the connector has always produced. A change to the derivation would orphan the
+     * template of every configured instance.
      */
     @ParameterizedTest
     @CsvSource({
             "RAW_JSON, 07ea053b-3515-3ce8-a8a5-acfca3d4ed15, data_contentTemplate_raw_json",
             "JSON,     77ddf598-724a-31d4-943b-79ee71c854c5, data_contentTemplate_json",
-            "XML,      610ed4fa-0b1f-33a9-9a31-0be332673a58, data_contentTemplate_xml",
-    })
+            "XML,      610ed4fa-0b1f-33a9-9a31-0be332673a58, data_contentTemplate_xml",})
     void derivedTemplateIdentifiersMatchTheEstablishedValues(ContentType contentType, String uuid, String name) {
         assertEquals(uuid, Attributes.getDataContentTemplateUuid(contentType));
         assertEquals(name, Attributes.getDataContentTemplateName(contentType));
@@ -194,7 +190,8 @@ class AttributesTest {
         assertNotEquals(Attributes.getDataContentTemplateUuid(ContentType.JSON),
                 Attributes.getDataContentTemplateUuid(ContentType.XML));
 
-        Set<String> uuids = Arrays.stream(ContentType.values())
+        Set<String> uuids = Arrays
+                .stream(ContentType.values())
                 .map(Attributes::getDataContentTemplateUuid)
                 .collect(Collectors.toSet());
         assertEquals(ContentType.values().length, uuids.size(), "each content type needs its own attribute UUID");

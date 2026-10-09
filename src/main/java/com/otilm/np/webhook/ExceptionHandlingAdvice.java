@@ -1,11 +1,18 @@
 package com.otilm.np.webhook;
 
-import com.otilm.api.exception.*;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.otilm.api.exception.AlreadyExistException;
+import com.otilm.api.exception.NotDeletableException;
+import com.otilm.api.exception.NotFoundException;
+import com.otilm.api.exception.ValidationError;
+import com.otilm.api.exception.ValidationException;
 import com.otilm.np.webhook.dto.ApiErrorResponseDto;
 import com.otilm.np.webhook.dto.ErrorMessageDto;
 import com.otilm.np.webhook.exception.NotificationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +28,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-
 @RestControllerAdvice
 public class ExceptionHandlingAdvice {
 
@@ -32,29 +35,31 @@ public class ExceptionHandlingAdvice {
 
     private static final String ARGUMENTS_NOT_VALID = "Arguments not valid";
 
-    @ExceptionHandler({ MethodArgumentNotValidException.class })
+    @ExceptionHandler({MethodArgumentNotValidException.class})
     protected ResponseEntity<Object> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
         List<ErrorMessageDto> errors = new ArrayList<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-            ErrorMessageDto errorMessage = new ErrorMessageDto(error.getField(), ex.getClass().getSimpleName(), error.getDefaultMessage());
+            ErrorMessageDto errorMessage = new ErrorMessageDto(error.getField(), ex.getClass().getSimpleName(),
+                    error.getDefaultMessage());
             if (log.isDebugEnabled()) {
                 errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
             }
             errors.add(errorMessage);
         }
         for (ObjectError error : ex.getBindingResult().getGlobalErrors()) {
-            ErrorMessageDto errorMessage = new ErrorMessageDto(error.getObjectName(), ex.getClass().getSimpleName(), error.getDefaultMessage());
+            ErrorMessageDto errorMessage = new ErrorMessageDto(error.getObjectName(), ex.getClass().getSimpleName(),
+                    error.getDefaultMessage());
             if (log.isDebugEnabled()) {
                 errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
             }
             errors.add(errorMessage);
         }
-        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(80, HttpStatus.BAD_REQUEST, ARGUMENTS_NOT_VALID, errors);
-        return new ResponseEntity<>(
-                apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(80, HttpStatus.BAD_REQUEST,
+                ARGUMENTS_NOT_VALID, errors);
+        return new ResponseEntity<>(apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
     }
 
-    @ExceptionHandler({ MethodArgumentTypeMismatchException.class })
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class})
     public ResponseEntity<Object> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex) {
         final Object value = ex.getValue();
         ErrorMessageDto errorMessage = new ErrorMessageDto(ex.getName(), ex.getClass().getSimpleName(),
@@ -62,14 +67,14 @@ public class ExceptionHandlingAdvice {
         if (log.isDebugEnabled()) {
             errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
         }
-        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(81, HttpStatus.BAD_REQUEST, ARGUMENTS_NOT_VALID, errorMessage);
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(81, HttpStatus.BAD_REQUEST,
+                ARGUMENTS_NOT_VALID, errorMessage);
         apiErrorResponseDto.setTimestamp(Instant.now().toEpochMilli());
         log.error("{}", apiErrorResponseDto.getMessage(), ex);
-        return new ResponseEntity<>(
-                apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
+        return new ResponseEntity<>(apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
     }
 
-    @ExceptionHandler({ HttpMessageNotReadableException.class })
+    @ExceptionHandler({HttpMessageNotReadableException.class})
     public ResponseEntity<Object> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
         ErrorMessageDto errorMessage;
         final Throwable cause = ex.getCause();
@@ -92,11 +97,11 @@ public class ExceptionHandlingAdvice {
                 errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
             }
         }
-        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(81, HttpStatus.BAD_REQUEST, ARGUMENTS_NOT_VALID, errorMessage);
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(81, HttpStatus.BAD_REQUEST,
+                ARGUMENTS_NOT_VALID, errorMessage);
         apiErrorResponseDto.setTimestamp(Instant.now().toEpochMilli());
         log.error("{}", apiErrorResponseDto.getMessage(), ex);
-        return new ResponseEntity<>(
-                apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
+        return new ResponseEntity<>(apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
     }
 
     @ExceptionHandler(NotFoundException.class)
@@ -105,11 +110,11 @@ public class ExceptionHandlingAdvice {
         if (log.isDebugEnabled()) {
             errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
         }
-        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(404, HttpStatus.NOT_FOUND, "Object not found", errorMessage);
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(404, HttpStatus.NOT_FOUND, "Object not found",
+                errorMessage);
         apiErrorResponseDto.setTimestamp(Instant.now().toEpochMilli());
         log.error("{}", apiErrorResponseDto.getMessage(), ex);
-        return new ResponseEntity<>(
-                apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
+        return new ResponseEntity<>(apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
     }
 
     @ExceptionHandler(AlreadyExistException.class)
@@ -118,11 +123,11 @@ public class ExceptionHandlingAdvice {
         if (log.isDebugEnabled()) {
             errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
         }
-        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(405, HttpStatus.BAD_REQUEST, "Object already exists", errorMessage);
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(405, HttpStatus.BAD_REQUEST,
+                "Object already exists", errorMessage);
         apiErrorResponseDto.setTimestamp(Instant.now().toEpochMilli());
         log.error("{}", apiErrorResponseDto.getMessage(), ex);
-        return new ResponseEntity<>(
-                apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
+        return new ResponseEntity<>(apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
     }
 
     @ExceptionHandler(NotDeletableException.class)
@@ -131,11 +136,11 @@ public class ExceptionHandlingAdvice {
         if (log.isDebugEnabled()) {
             errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
         }
-        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(406, HttpStatus.BAD_REQUEST, "Object cannot be deleted", errorMessage);
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(406, HttpStatus.BAD_REQUEST,
+                "Object cannot be deleted", errorMessage);
         apiErrorResponseDto.setTimestamp(Instant.now().toEpochMilli());
         log.error("{}", apiErrorResponseDto.getMessage(), ex);
-        return new ResponseEntity<>(
-                apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
+        return new ResponseEntity<>(apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
     }
 
     @ExceptionHandler(ValidationException.class)
@@ -143,8 +148,7 @@ public class ExceptionHandlingAdvice {
     public List<String> handleValidationException(ValidationException ex) {
         log.info("HTTP 422: {}", ex.getMessage());
 
-        return ex.getErrors().stream()
-                .map(ValidationError::getErrorDescription).toList();
+        return ex.getErrors().stream().map(ValidationError::getErrorDescription).toList();
     }
 
     @ExceptionHandler(NotificationException.class)
@@ -153,27 +157,25 @@ public class ExceptionHandlingAdvice {
         if (log.isDebugEnabled()) {
             errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
         }
-        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(
-                101,
-                HttpStatus.INTERNAL_SERVER_ERROR,
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(101, HttpStatus.INTERNAL_SERVER_ERROR,
                 "Failed to send notification, see logs for more details", errorMessage);
         apiErrorResponseDto.setTimestamp(Instant.now().toEpochMilli());
         log.error("{}", apiErrorResponseDto.getMessage(), ex);
-        return new ResponseEntity<>(
-                apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
+        return new ResponseEntity<>(apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
     }
 
-    @ExceptionHandler({ Exception.class })
+    @ExceptionHandler({Exception.class})
     public ResponseEntity<Object> handleAll(Exception ex) {
-        ErrorMessageDto errorMessage = new ErrorMessageDto("Unexpected error", ex.getClass().getSimpleName(), ex.getMessage());
+        ErrorMessageDto errorMessage = new ErrorMessageDto("Unexpected error", ex.getClass().getSimpleName(),
+                ex.getMessage());
         if (log.isDebugEnabled()) {
             errorMessage.setStacktrace(ExceptionUtils.getStackTrace(ex));
         }
-        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(99, HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected exception occurred", errorMessage);
+        ApiErrorResponseDto apiErrorResponseDto = new ApiErrorResponseDto(99, HttpStatus.INTERNAL_SERVER_ERROR,
+                "Unexpected exception occurred", errorMessage);
         apiErrorResponseDto.setTimestamp(Instant.now().toEpochMilli());
         log.error("Unexpected exception occurred: {}", ex.getMessage());
-        return new ResponseEntity<>(
-                apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
+        return new ResponseEntity<>(apiErrorResponseDto, new HttpHeaders(), apiErrorResponseDto.getStatus());
     }
 
 }
