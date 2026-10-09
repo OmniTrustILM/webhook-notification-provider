@@ -9,21 +9,22 @@ import com.otilm.api.model.common.attribute.common.content.data.ProgrammingLangu
 import com.otilm.api.model.common.attribute.v2.content.CodeBlockAttributeContentV2;
 import com.otilm.api.model.common.attribute.v2.content.StringAttributeContentV2;
 import com.otilm.core.util.AttributeDefinitionUtils;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
- * The attributes of a notification instance are stored as serialized JSON, so rows written by
- * earlier releases have to keep deserializing after the library upgrade.
+ * The attributes of a notification instance are stored as serialized JSON, so rows written by earlier releases have to
+ * keep deserializing after the library upgrade.
  *
- * <p>The payload below was produced by serializing this connector's own attribute definitions
- * against the pre-rebrand interfaces release, for a webhook configured with a URL and a JSON
- * content template. It records that the serialized form carries a logical type discriminator and
- * a version rather than class names, which is why the namespace change needs no data migration.</p>
+ * <p>
+ * The payload below was produced by serializing this connector's own attribute definitions against the pre-rebrand
+ * interfaces release, for a webhook configured with a URL and a JSON content template. It records that the serialized
+ * form carries a logical type discriminator and a version rather than class names, which is why the namespace change
+ * needs no data migration.
+ * </p>
  */
 class LegacyAttributesTest {
 
@@ -57,19 +58,22 @@ class LegacyAttributesTest {
     }
 
     /**
-     * The content of a stored instance is read back to rebuild its configuration, so the values
-     * themselves have to survive, not just the attribute envelope.
+     * The content of a stored instance is read back to rebuild its configuration, so the values themselves have to
+     * survive, not just the attribute envelope.
      */
     @Test
     void contentOfLegacyAttributesIsPreserved() {
         List<BaseAttribute> attributes = AttributeDefinitionUtils.deserialize(LEGACY_ATTRIBUTES, BaseAttribute.class);
 
-        String url = AttributeDefinitionUtils.getSingleItemAttributeContentValue(
-                "data_webhookUrl", attributes, StringAttributeContentV2.class).getData();
+        String url = AttributeDefinitionUtils
+                .getSingleItemAttributeContentValue("data_webhookUrl", attributes, StringAttributeContentV2.class)
+                .getData();
         assertEquals("https://example.com/webhook", url);
 
-        CodeBlockAttributeContentData template = AttributeDefinitionUtils.getSingleItemAttributeContentValue(
-                "data_contentTemplate_json", attributes, CodeBlockAttributeContentV2.class).getData();
+        CodeBlockAttributeContentData template = AttributeDefinitionUtils
+                .getSingleItemAttributeContentValue("data_contentTemplate_json", attributes,
+                        CodeBlockAttributeContentV2.class)
+                .getData();
         assertEquals(ProgrammingLanguageEnum.JSON, template.getLanguage());
         assertEquals("eyJldmVudCI6ICIke2V2ZW50fSJ9", template.getCode());
     }

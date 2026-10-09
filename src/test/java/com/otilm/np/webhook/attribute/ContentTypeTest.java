@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class ContentTypeTest {
 
     /**
-     * The content type is persisted and echoed back through attribute content, so every declared
-     * value has to survive the round trip through its wire name.
+     * The content type is persisted and echoed back through attribute content, so every declared value has to survive
+     * the round trip through its wire name.
      */
     @ParameterizedTest
     @EnumSource(ContentType.class)

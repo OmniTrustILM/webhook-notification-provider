@@ -16,6 +16,9 @@ import com.otilm.np.webhook.exception.NotificationException;
 import com.otilm.np.webhook.service.AttributeService;
 import com.otilm.np.webhook.service.NotificationInstanceService;
 import com.otilm.np.webhook.util.TemplateUtils;
+import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,10 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
-
-import java.util.Base64;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 public class NotificationInstanceServiceImpl implements NotificationInstanceService {
@@ -45,10 +44,9 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
     private AttributeService attributeService;
 
     /**
-     * Whether DEBUG logging includes the notification request itself. The request carries values
-     * that must not reach logs by default — the certificate-registration credential among them —
-     * so payload logging is a separate, deliberate switch rather than a side effect of raising the
-     * log level.
+     * Whether DEBUG logging includes the notification request itself. The request carries values that must not reach
+     * logs by default — the certificate-registration credential among them — so payload logging is a separate,
+     * deliberate switch rather than a side effect of raising the log level.
      */
     private boolean logRequestPayload;
 
@@ -72,15 +70,14 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
         List<NotificationInstance> instances;
         instances = notificationInstanceRepository.findAll();
         if (!instances.isEmpty()) {
-            return instances
-                    .stream().map(NotificationInstance::mapToDto)
-                    .toList();
+            return instances.stream().map(NotificationInstance::mapToDto).toList();
         }
         return List.of();
     }
 
     @Override
-    public NotificationProviderInstanceDto createNotificationInstance(NotificationProviderInstanceRequestDto request) throws AlreadyExistException {
+    public NotificationProviderInstanceDto createNotificationInstance(NotificationProviderInstanceRequestDto request)
+            throws AlreadyExistException {
         if (notificationInstanceRepository.findByName(request.getName()).isPresent()) {
             throw new AlreadyExistException(NotificationInstance.class, request.getName());
         }
@@ -97,13 +94,15 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
 
     @Override
     public NotificationProviderInstanceDto getNotificationInstance(UUID uuid) throws NotFoundException {
-        return notificationInstanceRepository.findByUuid(uuid)
+        return notificationInstanceRepository
+                .findByUuid(uuid)
                 .orElseThrow(() -> new NotFoundException(NotificationInstance.class, uuid))
                 .mapToDto();
     }
 
     @Override
-    public NotificationProviderInstanceDto updateNotificationInstance(UUID uuid, NotificationProviderInstanceRequestDto request) throws NotFoundException {
+    public NotificationProviderInstanceDto updateNotificationInstance(UUID uuid,
+            NotificationProviderInstanceRequestDto request) throws NotFoundException {
         NotificationInstance notificationInstance = notificationInstanceRepository
                 .findByUuid(uuid)
                 .orElseThrow(() -> new NotFoundException(NotificationInstance.class, uuid));
@@ -117,7 +116,8 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
 
     @Override
     public void removeNotificationInstance(UUID uuid) throws NotFoundException {
-        NotificationInstance instance = notificationInstanceRepository.findByUuid(uuid)
+        NotificationInstance instance = notificationInstanceRepository
+                .findByUuid(uuid)
                 .orElseThrow(() -> new NotFoundException(NotificationInstance.class, uuid));
 
         notificationInstanceRepository.delete(instance);
@@ -125,15 +125,19 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
 
     @Override
     public void sendNotification(UUID uuid, NotificationProviderNotifyRequestDto request) throws NotFoundException {
-        logger.info("Received request to send webhook: eventType={}, resource={}", request.getEventType(), request.getResource());
+        logger
+                .info("Received request to send webhook: eventType={}, resource={}", request.getEventType(),
+                        request.getResource());
         NotificationInstance notificationInstance = notificationInstanceRepository
                 .findByUuid(uuid)
                 .orElseThrow(() -> new NotFoundException(NotificationInstance.class, uuid));
 
         if (logger.isDebugEnabled()) {
-            logger.debug("Request to send webhook received: {}", logRequestPayload
-                    ? TemplateUtils.describeRequestForDebug(request)
-                    : TemplateUtils.summarizeRequest(request));
+            logger
+                    .debug("Request to send webhook received: {}",
+                            logRequestPayload
+                                    ? TemplateUtils.describeRequestForDebug(request)
+                                    : TemplateUtils.summarizeRequest(request));
         }
 
         String url = notificationInstance.getUrl();
@@ -151,7 +155,8 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
 
         logger.info("Sending webhook to: {}, with timestamp {}, and nonce {}", url, timestamp, nonce);
 
-        WebClient.builder()
+        WebClient
+                .builder()
                 .baseUrl(url)
                 .defaultHeader("Content-Type", notificationInstance.getContentType().getContentHeader())
                 .defaultHeader(HEADER_TIMESTAMP, timestamp)
@@ -162,7 +167,9 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
                 .retrieve()
                 .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(), clientResponse -> {
                     logger.error("Failed to send webhook to {}: {}", url, clientResponse.statusCode());
-                    return Mono.error(new NotificationException("Failed to send webhook to " + url + ": " + clientResponse.statusCode()));
+                    return Mono
+                            .error(new NotificationException(
+                                    "Failed to send webhook to " + url + ": " + clientResponse.statusCode()));
                 })
                 .bodyToMono(Void.class)
                 // Delivery is asynchronous, so the outcome is logged from the callbacks rather
@@ -170,43 +177,49 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
                 // Reactor's onErrorDropped logging, which would print the raw throwable and
                 // bypass the sanitization in describeSendFailure.
                 .doOnSuccess(unused -> logger.info("Webhook sent to: {}", url))
-                .subscribe(unused -> { },
-                        e -> logger.error("Error sending webhook to {}: {}", url, describeSendFailure(e)));
+                .subscribe(unused -> {
+                }, e -> logger.error("Error sending webhook to {}: {}", url, describeSendFailure(e)));
     }
 
     /**
-     * Reads the webhook configuration out of the request attributes and applies it to the instance.
-     * Creation and update configure an instance identically, so both go through here.
+     * Reads the webhook configuration out of the request attributes and applies it to the instance. Creation and update
+     * configure an instance identically, so both go through here.
      */
     private void applyRequestedConfiguration(NotificationInstance notificationInstance,
-                                             NotificationProviderInstanceRequestDto request) {
-        final String url = AttributeDefinitionUtils.getSingleItemAttributeContentValue(
-                Attributes.DATA_WEBHOOK_URL_NAME, request.getAttributes(), StringAttributeContentV2.class).getData();
+            NotificationProviderInstanceRequestDto request) {
+        final String url = AttributeDefinitionUtils
+                .getSingleItemAttributeContentValue(Attributes.DATA_WEBHOOK_URL_NAME, request.getAttributes(),
+                        StringAttributeContentV2.class)
+                .getData();
 
-        final ContentType contentType = ContentType.fromContentType(
-                AttributeDefinitionUtils.getSingleItemAttributeContentValue(
-                        Attributes.DATA_CONTENT_TYPE_NAME, request.getAttributes(), StringAttributeContentV2.class).getData()
-        );
+        final ContentType contentType = ContentType
+                .fromContentType(AttributeDefinitionUtils
+                        .getSingleItemAttributeContentValue(Attributes.DATA_CONTENT_TYPE_NAME, request.getAttributes(),
+                                StringAttributeContentV2.class)
+                        .getData());
 
         String contentTemplate = null;
         if (contentType != ContentType.RAW_JSON) {
-            contentTemplate = AttributeDefinitionUtils.getSingleItemAttributeContentValue(
-                    Attributes.getDataContentTemplateName(contentType), request.getAttributes(),
-                    CodeBlockAttributeContentV2.class).getData().getCode();
+            contentTemplate = AttributeDefinitionUtils
+                    .getSingleItemAttributeContentValue(Attributes.getDataContentTemplateName(contentType),
+                            request.getAttributes(), CodeBlockAttributeContentV2.class)
+                    .getData()
+                    .getCode();
         }
 
         notificationInstance.setUrl(url);
         notificationInstance.setContentType(contentType);
         notificationInstance.setContentTemplate(contentTemplate);
-        notificationInstance.setAttributes(AttributeDefinitionUtils.mergeAttributes(
-                attributeService.getAllDataAttributes(request.getKind(), contentType), request.getAttributes()));
+        notificationInstance
+                .setAttributes(AttributeDefinitionUtils
+                        .mergeAttributes(attributeService.getAllDataAttributes(request.getKind(), contentType),
+                                request.getAttributes()));
     }
 
     /**
-     * Transport failures carry safe, useful detail (host, port, HTTP status); anything else —
-     * for example a request-body encoding failure — can embed request content in its message,
-     * so only the exception type is reported. The request itself is inspectable through DEBUG
-     * logging.
+     * Transport failures carry safe, useful detail (host, port, HTTP status); anything else — for example a
+     * request-body encoding failure — can embed request content in its message, so only the exception type is reported.
+     * The request itself is inspectable through DEBUG logging.
      */
     static String describeSendFailure(Throwable e) {
         if (e instanceof NotificationException || e instanceof WebClientRequestException) {

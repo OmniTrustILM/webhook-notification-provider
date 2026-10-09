@@ -28,11 +28,12 @@ public enum ContentType {
     }
 
     public static ContentType fromContentType(String contentType) {
-        return Arrays.stream(VALUES)
+        return Arrays
+                .stream(VALUES)
                 .filter(type -> type.code.equalsIgnoreCase(contentType))
                 .findFirst()
-                .orElseThrow(() ->
-                        new ValidationException(ValidationError.create("Invalid content type {}", contentType)));
+                .orElseThrow(
+                        () -> new ValidationException(ValidationError.create("Invalid content type {}", contentType)));
     }
 
     public String getContentType() {

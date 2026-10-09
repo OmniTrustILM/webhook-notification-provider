@@ -49,8 +49,7 @@ public class Attributes {
     public static final String INFO_CONTENT_TYPE_LABEL = "Content type information";
 
     /** Callback that resolves the template attribute for the selected content type. */
-    public static final String CONTENT_TEMPLATE_CALLBACK_CONTEXT =
-            "/v1/notificationProvider/callbacks/template/{contentType}/attributes";
+    public static final String CONTENT_TEMPLATE_CALLBACK_CONTEXT = "/v1/notificationProvider/callbacks/template/{contentType}/attributes";
 
     private Attributes() {
     }
@@ -74,7 +73,7 @@ public class Attributes {
                 - `RAW_JSON` - will send the data as raw JSON to the specified webhook URL
                 - `JSON` - prepares the data in JSON format according to the specified template
                 - `XML` - prepares the data in XML format according to the specified template
-                
+
                 The template support FreeMarker syntax with variables that can be used to build the content dynamically.
                 """;
 
@@ -102,9 +101,11 @@ public class Attributes {
         DataAttributeV2 attribute = dataAttribute(DATA_CONTENT_TYPE_UUID, DATA_CONTENT_TYPE_NAME,
                 DATA_CONTENT_TYPE_DESCRIPTION, AttributeContentType.STRING, DATA_CONTENT_TYPE_LABEL, true);
 
-        attribute.setContent(Arrays.stream(ContentType.values())
-                .map(type -> new StringAttributeContentV2(type.getContentType(), type.name()))
-                .toList());
+        attribute
+                .setContent(Arrays
+                        .stream(ContentType.values())
+                        .map(type -> new StringAttributeContentV2(type.getContentType(), type.name()))
+                        .toList());
 
         return attribute;
     }
@@ -118,7 +119,9 @@ public class Attributes {
         attribute.setType(AttributeType.GROUP);
 
         Set<AttributeCallbackMapping> mappings = new HashSet<>();
-        mappings.add(new AttributeCallbackMapping(DATA_CONTENT_TYPE_NAME + ".data", "contentType", AttributeValueTarget.PATH_VARIABLE));
+        mappings
+                .add(new AttributeCallbackMapping(DATA_CONTENT_TYPE_NAME + ".data", "contentType",
+                        AttributeValueTarget.PATH_VARIABLE));
 
         AttributeCallback attributeCallback = new AttributeCallback();
         attributeCallback.setCallbackContext(CONTENT_TEMPLATE_CALLBACK_CONTEXT);
@@ -146,7 +149,9 @@ public class Attributes {
     }
 
     public static String getDataContentTemplateUuid(ContentType contentType) {
-        return UUID.nameUUIDFromBytes((DATA_CONTENT_TEMPLATE_UUID + contentType.getContentType()).getBytes()).toString();
+        return UUID
+                .nameUUIDFromBytes((DATA_CONTENT_TEMPLATE_UUID + contentType.getContentType()).getBytes())
+                .toString();
     }
 
     public static String getDataContentTemplateName(ContentType contentType) {
@@ -154,11 +159,11 @@ public class Attributes {
     }
 
     /**
-     * Skeleton shared by every data attribute of this provider. All of them are required, visible
-     * and single-select; only the list flag varies, so it stays a parameter.
+     * Skeleton shared by every data attribute of this provider. All of them are required, visible and single-select;
+     * only the list flag varies, so it stays a parameter.
      */
     private static DataAttributeV2 dataAttribute(String uuid, String name, String description,
-                                                 AttributeContentType contentType, String label, boolean list) {
+            AttributeContentType contentType, String label, boolean list) {
         DataAttributeV2 attribute = new DataAttributeV2();
 
         attribute.setUuid(uuid);
