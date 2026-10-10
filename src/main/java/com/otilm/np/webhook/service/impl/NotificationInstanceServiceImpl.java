@@ -2,6 +2,9 @@ package com.otilm.np.webhook.service.impl;
 
 import com.otilm.api.exception.AlreadyExistException;
 import com.otilm.api.exception.NotFoundException;
+import com.otilm.api.exception.ValidationError;
+import com.otilm.api.exception.ValidationException;
+import com.otilm.api.model.common.attribute.common.content.data.CodeBlockAttributeContentData;
 import com.otilm.api.model.common.attribute.v2.content.CodeBlockAttributeContentV2;
 import com.otilm.api.model.common.attribute.v2.content.StringAttributeContentV2;
 import com.otilm.api.model.connector.notification.NotificationProviderInstanceDto;
@@ -16,6 +19,7 @@ import com.otilm.np.webhook.exception.NotificationException;
 import com.otilm.np.webhook.service.AttributeService;
 import com.otilm.np.webhook.service.NotificationInstanceService;
 import com.otilm.np.webhook.util.TemplateUtils;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
@@ -150,7 +154,8 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
             content = request;
         } else {
             String contentTemplate = notificationInstance.getContentTemplate();
-            content = TemplateUtils.processFreeMarkerTemplate("webhook content", contentTemplate, request);
+            content = TemplateUtils
+                    .processFreeMarkerTemplate(TemplateUtils.CONTENT_TEMPLATE_LABEL, contentTemplate, request);
         }
 
         logger.info("Sending webhook to: {}, with timestamp {}, and nonce {}", url, timestamp, nonce);
@@ -200,11 +205,7 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
 
         String contentTemplate = null;
         if (contentType != ContentType.RAW_JSON) {
-            contentTemplate = AttributeDefinitionUtils
-                    .getSingleItemAttributeContentValue(Attributes.getDataContentTemplateName(contentType),
-                            request.getAttributes(), CodeBlockAttributeContentV2.class)
-                    .getData()
-                    .getCode();
+            contentTemplate = validatedContentTemplate(request, contentType);
         }
 
         notificationInstance.setUrl(url);
@@ -214,6 +215,32 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
                 .setAttributes(AttributeDefinitionUtils
                         .mergeAttributes(attributeService.getAllDataAttributes(request.getKind(), contentType),
                                 request.getAttributes()));
+    }
+
+    /**
+     * The content template the request carries, refused here when it will not parse. An operator editing a template is
+     * told while they have it in front of them, rather than by a notification that failed to reach its receiver.
+     */
+    private static String validatedContentTemplate(NotificationProviderInstanceRequestDto request,
+            ContentType contentType) {
+        CodeBlockAttributeContentData data = AttributeDefinitionUtils
+                .getSingleItemAttributeContentValue(Attributes.getDataContentTemplateName(contentType),
+                        request.getAttributes(), CodeBlockAttributeContentV2.class)
+                .getData();
+        String contentTemplate = data == null ? null : data.getCode();
+        if (contentTemplate == null) {
+            throw new ValidationException(ValidationError.create("The content template is missing."));
+        }
+        String decoded;
+        try {
+            decoded = new String(Base64.getDecoder().decode(contentTemplate), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException(ValidationError.create("The content template could not be read."));
+        }
+        TemplateUtils.contentTemplateFailure(decoded).ifPresent(reason -> {
+            throw new ValidationException(ValidationError.create(reason));
+        });
+        return contentTemplate;
     }
 
     /**

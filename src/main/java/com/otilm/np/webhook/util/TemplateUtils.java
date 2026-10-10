@@ -4,8 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.otilm.api.exception.ValidationError;
+import com.otilm.api.exception.ValidationException;
 import com.otilm.api.model.connector.notification.NotificationProviderNotifyRequestDto;
 import com.otilm.np.webhook.exception.NotificationException;
+import freemarker.core.TemplateClassResolver;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -14,6 +17,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +30,9 @@ public class TemplateUtils {
      * {@code java.time} serializable instead of degrading DEBUG output to the unserializable placeholder.
      */
     private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder().findAndAddModules().build();
+
+    /** Names the content template in every message about it, so saving, startup and send read alike. */
+    public static final String CONTENT_TEMPLATE_LABEL = "webhook content";
 
     private TemplateUtils() {
     }
@@ -67,6 +74,11 @@ public class TemplateUtils {
      * flow.
      * </p>
      *
+     * <p>
+     * A template that will not parse or render is the operator's configuration rather than a fault of this connector,
+     * so it is refused as a validation failure; only a failure to build the data model is the connector's own.
+     * </p>
+     *
      * @param templateLabel identifies the rendered template in errors, e.g. "webhook content"
      */
     public static String processFreeMarkerTemplate(String templateLabel, String templateSource,
@@ -86,23 +98,16 @@ public class TemplateUtils {
                     + e.getClass().getSimpleName() + ")");
         }
 
-        // Prepare FreeMarker configuration
-        Configuration cfg = new Configuration(Configuration.VERSION_2_3_33);
-        cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
-        cfg.setDefaultEncoding("UTF-8");
-        cfg.setLogTemplateExceptions(false);
-        cfg.setWrapUncheckedExceptions(true);
-
         Template template;
         try {
-            template = new Template(templateLabel, new StringReader(templateSource), cfg);
+            template = parse(templateLabel, templateSource);
         } catch (IOException e) {
             // Parsing happens before the data model is bound, so this message describes the
             // operator's own template only and cannot quote payload values.
             logger
                     .error("Failed to parse the {} template: event={}, resource={}, error={}", templateLabel,
                             request.getEvent(), request.getResource(), e.getMessage());
-            throw new NotificationException("Failed to parse the " + templateLabel + " template: " + e.getMessage(), e);
+            throw new ValidationException(ValidationError.create(parseFailureDescription(templateLabel, e)));
         }
 
         // Process the template with the data model
@@ -114,10 +119,42 @@ public class TemplateUtils {
             logger
                     .error("Failed to render the {} template: event={}, resource={}, error={}", templateLabel,
                             request.getEvent(), request.getResource(), diagnostics);
-            throw new NotificationException("Failed to render the " + templateLabel + " template: " + diagnostics);
+            throw new ValidationException(
+                    ValidationError.create("The " + templateLabel + " template cannot be rendered: " + diagnostics));
         }
 
         return stringWriter.toString();
+    }
+
+    /**
+     * Why this content template will not render, for a caller checking one before any notification reaches it: the
+     * message the operator would be given at send, or empty when it parses. Only parsing can be checked here, since
+     * whether a reference resolves depends on the event that is rendered.
+     */
+    public static Optional<String> contentTemplateFailure(String templateSource) {
+        try {
+            parse(CONTENT_TEMPLATE_LABEL, templateSource);
+            return Optional.empty();
+        } catch (IOException e) {
+            return Optional.of(parseFailureDescription(CONTENT_TEMPLATE_LABEL, e));
+        }
+    }
+
+    private static Template parse(String templateLabel, String templateSource) throws IOException {
+        Configuration cfg = new Configuration(Configuration.VERSION_2_3_33);
+        cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+        cfg.setDefaultEncoding("UTF-8");
+        cfg.setLogTemplateExceptions(false);
+        cfg.setWrapUncheckedExceptions(true);
+        // A template renders the notification and has no use for creating Java objects
+        cfg.setNewBuiltinClassResolver(TemplateClassResolver.ALLOWS_NOTHING_RESOLVER);
+        // A reported column counts characters, so a tab-indented template points at the right place
+        cfg.setTabSize(1);
+        return new Template(templateLabel, new StringReader(templateSource), cfg);
+    }
+
+    private static String parseFailureDescription(String templateLabel, IOException failure) {
+        return "The %s template cannot be rendered: %s".formatted(templateLabel, failure.getMessage());
     }
 
     /**

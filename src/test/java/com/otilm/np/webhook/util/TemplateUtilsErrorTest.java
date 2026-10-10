@@ -3,12 +3,15 @@ package com.otilm.np.webhook.util;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.otilm.api.exception.ValidationException;
 import com.otilm.api.model.connector.notification.NotificationProviderNotifyRequestDto;
 import com.otilm.api.model.core.auth.Resource;
 import com.otilm.api.model.core.other.ResourceEvent;
 import com.otilm.np.webhook.exception.NotificationException;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,21 +50,27 @@ class TemplateUtilsErrorTest {
         return request;
     }
 
+    /**
+     * The content template is the operator's configuration, so a template that will not parse is answered as invalid
+     * configuration rather than as a fault of the connector.
+     */
     @Test
-    void malformedTemplateThrowsCreationError() {
+    void malformedTemplateIsAValidationFailure() {
         NotificationProviderNotifyRequestDto request = request();
 
-        NotificationException ex = assertThrows(NotificationException.class,
+        ValidationException ex = assertThrows(ValidationException.class,
                 () -> TemplateUtils.processFreeMarkerTemplate(TEMPLATE_LABEL, "${unclosed", request));
-        assertTrue(ex.getMessage().contains(TEMPLATE_LABEL));
+        assertEquals(1, ex.getErrors().size());
+        assertTrue(ex.getMessage().contains("The " + TEMPLATE_LABEL + " template cannot be rendered"), ex.getMessage());
+        assertTrue(ex.getMessage().contains("line"), "the parse failure must stay locatable in the template");
         assertNoPayloadExposure(ex);
     }
 
     @Test
-    void unresolvedReferenceThrowsProcessingError() {
+    void unresolvedReferenceIsAValidationFailure() {
         NotificationProviderNotifyRequestDto request = request();
 
-        NotificationException ex = assertThrows(NotificationException.class,
+        ValidationException ex = assertThrows(ValidationException.class,
                 () -> TemplateUtils.processFreeMarkerTemplate(TEMPLATE_LABEL, "${totallyMissingVar}", request));
         assertTrue(ex.getMessage().contains(TEMPLATE_LABEL));
         assertTrue(ex.getMessage().contains("line"), "the rendering failure must stay locatable in the template");
@@ -71,7 +80,7 @@ class TemplateUtilsErrorTest {
     @Test
     void renderingFailureLogsTemplateAndEventIdentifiers() {
         NotificationProviderNotifyRequestDto request = request();
-        assertThrows(NotificationException.class,
+        assertThrows(ValidationException.class,
                 () -> TemplateUtils.processFreeMarkerTemplate(TEMPLATE_LABEL, "${totallyMissingVar}", request));
 
         List<String> errorLogs = formattedLogs();
@@ -85,6 +94,7 @@ class TemplateUtilsErrorTest {
                 "failure log must identify the template, event, and resource: " + errorLogs);
     }
 
+    /** Building the data model is the connector's own work, so its failure stays an internal one. */
     @Test
     void dataModelConversionFailureExposesNoPayload() {
         NotificationProviderNotifyRequestDto request = request();
@@ -114,7 +124,7 @@ class TemplateUtilsErrorTest {
     void coercionFailureExposesNoPayloadValue() {
         NotificationProviderNotifyRequestDto request = request();
 
-        NotificationException ex = assertThrows(NotificationException.class, () -> TemplateUtils
+        ValidationException ex = assertThrows(ValidationException.class, () -> TemplateUtils
                 .processFreeMarkerTemplate(TEMPLATE_LABEL, "${notificationData.credential?number}", request));
 
         assertNoPayloadExposure(ex);
@@ -126,7 +136,7 @@ class TemplateUtilsErrorTest {
     void dateCoercionFailureExposesNoPayloadValue() {
         NotificationProviderNotifyRequestDto request = request();
 
-        NotificationException ex = assertThrows(NotificationException.class, () -> TemplateUtils
+        ValidationException ex = assertThrows(ValidationException.class, () -> TemplateUtils
                 .processFreeMarkerTemplate(TEMPLATE_LABEL, "${notificationData.credential?datetime}", request));
 
         assertNoPayloadExposure(ex);
@@ -136,7 +146,60 @@ class TemplateUtilsErrorTest {
     @Test
     void nonTemplateRenderFailureIsDescribedByTypeOnly() {
         assertEquals("IOException",
-                TemplateUtils.renderFailureDiagnostics(new java.io.IOException("writer broke on " + SENSITIVE_VALUE)));
+                TemplateUtils.renderFailureDiagnostics(new IOException("writer broke on " + SENSITIVE_VALUE)));
+    }
+
+    @Test
+    void contentTemplateThatParsesHasNoFailure() {
+        assertEquals(Optional.empty(), TemplateUtils.contentTemplateFailure("{\"event\": \"${event}\"}"));
+    }
+
+    /**
+     * A reference the event may not carry is not a fault of the template on its own: whether it resolves depends on the
+     * event, so only a template that will not parse is refused before a notification reaches it.
+     */
+    @Test
+    void contentTemplateWithAnUnknownReferenceHasNoFailure() {
+        assertEquals(Optional.empty(), TemplateUtils.contentTemplateFailure("${notificationData.missing}"));
+    }
+
+    /** Saving a template, the startup listing and a send that reaches the template report the same sentence. */
+    @Test
+    void contentTemplateFailureReadsAsTheSendFailure() {
+        String malformed = "{\"text\": \"${unclosed\"}";
+        NotificationProviderNotifyRequestDto request = request();
+        ValidationException atSend = assertThrows(ValidationException.class, () -> TemplateUtils
+                .processFreeMarkerTemplate(TemplateUtils.CONTENT_TEMPLATE_LABEL, malformed, request));
+
+        Optional<String> failure = TemplateUtils.contentTemplateFailure(malformed);
+
+        assertTrue(failure.isPresent());
+        assertEquals(atSend.getErrors().getFirst().getErrorDescription(), failure.get());
+    }
+
+    /** The column names the character in the line, so a tab-indented template is not sent to the wrong place. */
+    @Test
+    void failurePositionCountsATabAsOneCharacter() {
+        NotificationProviderNotifyRequestDto request = request();
+        String template = "{\n\t\"text\": \"${notificationData.missing}\"\n}";
+        int column = "\t\"text\": \"${".length() + 1;
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> TemplateUtils.processFreeMarkerTemplate(TEMPLATE_LABEL, template, request));
+
+        assertTrue(ex.getMessage().contains("line 2, column " + column), ex.getMessage());
+    }
+
+    /** A content template renders the notification; it has no use for creating Java objects. */
+    @Test
+    void templateCannotCreateObjects() {
+        NotificationProviderNotifyRequestDto request = request();
+        String template = "<#assign made = \"freemarker.template.SimpleHash\"?new()>made";
+
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> TemplateUtils.processFreeMarkerTemplate(TEMPLATE_LABEL, template, request));
+
+        assertTrue(ex.getMessage().contains("line 1"), ex.getMessage());
     }
 
     @Test
@@ -195,7 +258,7 @@ class TemplateUtilsErrorTest {
         assertFalse(description.contains(SENSITIVE_VALUE));
     }
 
-    private void assertNoPayloadExposure(NotificationException ex) {
+    private void assertNoPayloadExposure(Exception ex) {
         assertFalse(ex.getMessage().contains(SENSITIVE_VALUE),
                 "exception message must not carry the request payload: " + ex.getMessage());
         for (String message : formattedLogs()) {

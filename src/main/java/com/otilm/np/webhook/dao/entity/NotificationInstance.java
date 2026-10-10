@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -59,7 +60,7 @@ public class NotificationInstance extends UniquelyIdentified {
     }
 
     public String getContentTemplate() {
-        return new String(Base64.getDecoder().decode(contentTemplate));
+        return new String(Base64.getDecoder().decode(contentTemplate), StandardCharsets.UTF_8);
     }
 
     /**

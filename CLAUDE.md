@@ -75,6 +75,13 @@ request is available at DEBUG only when `notification.log-request-payload` is
 switched on. `TemplateUtilsErrorTest` guards this; keep it that way when
 touching the render or send paths.
 
+**A template that will not render is the operator's fault, not ours.** Parse
+and render failures raise `ValidationException`, answered 422 with a plain list
+of messages; only the data-model failure stays `NotificationException` (500).
+Saving an instance and `ContentTemplatePreflight` at startup check parsing with
+`TemplateUtils.contentTemplateFailure`, so a parse error reads the same on send,
+on save and at startup.
+
 **Delivery headers are vendor-neutral.** `X-Webhook-Timestamp` and
 `X-Webhook-Nonce` are named after their function rather than after a product, so
 the wire contract survives renames. They are constants in

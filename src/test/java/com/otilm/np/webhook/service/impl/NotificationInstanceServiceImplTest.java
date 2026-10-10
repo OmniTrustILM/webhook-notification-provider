@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import com.otilm.api.exception.AlreadyExistException;
 import com.otilm.api.exception.NotFoundException;
+import com.otilm.api.exception.ValidationException;
 import com.otilm.api.model.client.attribute.RequestAttribute;
 import com.otilm.api.model.client.attribute.RequestAttributeV2;
 import com.otilm.api.model.common.attribute.common.content.AttributeContentType;
@@ -50,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,6 +63,8 @@ class NotificationInstanceServiceImplTest {
     private static final String INSTANCE_NAME = "configured-webhook";
     private static final String WEBHOOK_URL = "https://example.com/webhook";
     private static final String TEMPLATE_SOURCE = "{\"event\": \"${event}\"}";
+    private static final String MALFORMED_TEMPLATE_SOURCE = "{\"text\": \"${unclosed\"}";
+    private static final String TEMPLATE_FAILURE = "The webhook content template cannot be rendered";
     private static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(5);
     private static final String HEADER_TIMESTAMP = "X-Webhook-Timestamp";
     private static final String HEADER_NONCE = "X-Webhook-Nonce";
@@ -305,6 +309,38 @@ class NotificationInstanceServiceImplTest {
                 "default-level logs must not carry the request payload");
     }
 
+    /**
+     * A stored template that will not parse is the operator's configuration, so the send is refused as invalid rather
+     * than failing as the connector's own fault, and nothing is delivered.
+     */
+    @Test
+    void sendNotification_reportsATemplateThatWillNotParseAsAValidationFailure() {
+        UUID uuid = persistedInstance(ContentType.JSON, encoded(MALFORMED_TEMPLATE_SOURCE));
+        NotificationProviderNotifyRequestDto request = request();
+
+        ValidationException refused = assertThrows(ValidationException.class,
+                () -> service.sendNotification(uuid, request));
+
+        assertEquals(1, refused.getErrors().size());
+        assertTrue(refused.getMessage().contains(TEMPLATE_FAILURE), refused.getMessage());
+        assertTrue(formattedLogs().stream().noneMatch(message -> message.startsWith("Sending webhook to")),
+                "a template that will not render must not be delivered: " + formattedLogs());
+    }
+
+    /** A reference the event does not carry only fails once a notification reaches it, and answers the same way. */
+    @Test
+    void sendNotification_reportsAReferenceTheEventDoesNotCarryAsAValidationFailure() {
+        UUID uuid = persistedInstance(ContentType.XML, encoded("<text>${notificationData.missing}</text>"));
+        NotificationProviderNotifyRequestDto request = request();
+
+        ValidationException refused = assertThrows(ValidationException.class,
+                () -> service.sendNotification(uuid, request));
+
+        assertTrue(refused.getMessage().contains(TEMPLATE_FAILURE), refused.getMessage());
+        assertTrue(refused.getMessage().contains("line 1"), refused.getMessage());
+        assertFalse(refused.getMessage().contains(SENSITIVE_VALUE), refused.getMessage());
+    }
+
     // ---- instance lifecycle ----
 
     @Test
@@ -349,6 +385,64 @@ class NotificationInstanceServiceImplTest {
         assertEquals(2, dto.getAttributes().size());
     }
 
+    /** A template that will not parse is refused while the operator has it in front of them. */
+    @Test
+    void createNotificationInstance_refusesATemplateThatWillNotParse() {
+        when(repository.findByName(INSTANCE_NAME)).thenReturn(Optional.empty());
+        NotificationProviderInstanceRequestDto request = instanceRequest(encoded(MALFORMED_TEMPLATE_SOURCE));
+
+        ValidationException refused = assertThrows(ValidationException.class,
+                () -> service.createNotificationInstance(request));
+
+        assertEquals(1, refused.getErrors().size());
+        assertTrue(refused.getMessage().contains(TEMPLATE_FAILURE), refused.getMessage());
+        assertTrue(refused.getMessage().contains("line 1"), refused.getMessage());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void createNotificationInstance_refusesATemplateThatCannotBeRead() {
+        when(repository.findByName(INSTANCE_NAME)).thenReturn(Optional.empty());
+        NotificationProviderInstanceRequestDto request = instanceRequest("{\"not\": \"base64\"}");
+
+        ValidationException refused = assertThrows(ValidationException.class,
+                () -> service.createNotificationInstance(request));
+
+        assertEquals("The content template could not be read.", refused.getErrors().getFirst().getErrorDescription());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void createNotificationInstance_refusesATemplateWithoutCode() {
+        when(repository.findByName(INSTANCE_NAME)).thenReturn(Optional.empty());
+        NotificationProviderInstanceRequestDto request = instanceRequest(null);
+
+        ValidationException refused = assertThrows(ValidationException.class,
+                () -> service.createNotificationInstance(request));
+
+        assertEquals("The content template is missing.", refused.getErrors().getFirst().getErrorDescription());
+        verify(repository, never()).save(any());
+    }
+
+    /** JSON and XML are rendered from the template, so leaving it out is refused rather than stored. */
+    @Test
+    void createNotificationInstance_refusesAMissingTemplate() {
+        when(repository.findByName(INSTANCE_NAME)).thenReturn(Optional.empty());
+        NotificationProviderInstanceRequestDto request = instanceRequest();
+        request
+                .setAttributes(List
+                        .of(stringAttribute(Attributes.DATA_WEBHOOK_URL_UUID, Attributes.DATA_WEBHOOK_URL_NAME,
+                                WEBHOOK_URL),
+                                stringAttribute(Attributes.DATA_CONTENT_TYPE_UUID, Attributes.DATA_CONTENT_TYPE_NAME,
+                                        ContentType.JSON.name())));
+
+        ValidationException refused = assertThrows(ValidationException.class,
+                () -> service.createNotificationInstance(request));
+
+        assertEquals("The content template is missing.", refused.getErrors().getFirst().getErrorDescription());
+        verify(repository, never()).save(any());
+    }
+
     /** Instance names identify an instance to the operator, so they have to stay unique. */
     @Test
     void createNotificationInstance_rejectsADuplicateName() {
@@ -359,7 +453,7 @@ class NotificationInstanceServiceImplTest {
 
         NotificationProviderInstanceRequestDto request = instanceRequest();
         assertThrows(AlreadyExistException.class, () -> service.createNotificationInstance(request));
-        verify(repository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(repository, never()).save(any());
     }
 
     @Test
@@ -391,6 +485,22 @@ class NotificationInstanceServiceImplTest {
         assertEquals(WEBHOOK_URL, saved.getUrl());
         assertEquals(ContentType.JSON, saved.getContentType());
         assertEquals(TEMPLATE_SOURCE, saved.getContentTemplate());
+    }
+
+    @Test
+    void updateNotificationInstance_refusesATemplateThatWillNotParse() {
+        UUID uuid = persistedInstance(ContentType.RAW_JSON, null, "http://localhost:9");
+        NotificationProviderInstanceRequestDto request = instanceRequest(encoded(MALFORMED_TEMPLATE_SOURCE));
+
+        ValidationException refused = assertThrows(ValidationException.class,
+                () -> service.updateNotificationInstance(uuid, request));
+
+        assertTrue(refused.getMessage().contains(TEMPLATE_FAILURE), refused.getMessage());
+        verify(repository, never()).save(any());
+        NotificationInstance stored = repository.findByUuid(uuid).orElseThrow();
+        assertEquals(ContentType.RAW_JSON, stored.getContentType(),
+                "a refused update must leave the instance as it was");
+        assertEquals("http://localhost:9", stored.getUrl());
     }
 
     @Test
@@ -450,11 +560,18 @@ class NotificationInstanceServiceImplTest {
         return captor.getValue();
     }
 
+    private static String encoded(String templateSource) {
+        return Base64.getEncoder().encodeToString(templateSource.getBytes(StandardCharsets.UTF_8));
+    }
+
     private NotificationProviderInstanceRequestDto instanceRequest() {
+        return instanceRequest(encoded(TEMPLATE_SOURCE));
+    }
+
+    /** @param templateCode the content template as the platform sends it, Base64 encoded */
+    private NotificationProviderInstanceRequestDto instanceRequest(String templateCode) {
         CodeBlockAttributeContentV2 template = new CodeBlockAttributeContentV2();
-        template
-                .setData(new CodeBlockAttributeContentData(ContentType.JSON.getLanguage(),
-                        Base64.getEncoder().encodeToString(TEMPLATE_SOURCE.getBytes(StandardCharsets.UTF_8))));
+        template.setData(new CodeBlockAttributeContentData(ContentType.JSON.getLanguage(), templateCode));
 
         RequestAttributeV2 contentTemplate = new RequestAttributeV2();
         contentTemplate.setUuid(UUID.fromString(Attributes.getDataContentTemplateUuid(ContentType.JSON)));

@@ -57,6 +57,14 @@ The following content types are supported:
 FreeMarker against the notification request, so its fields are available as variables — for example
 `${event}`, `${resource}` and `${notificationData.serialNumber}`.
 
+A content template is checked when the instance is saved, and one that will not parse is refused
+with the position of the error. Whether a reference such as `${notificationData.serialNumber}`
+resolves depends on the event, so that is only found when a notification reaches the template. A
+notification that reaches a template which will not render is answered with an unprocessable-entity
+status, since the template is configuration rather than a fault of the connector, and a parse error
+reads the same there as on save. Every stored template that will not parse is named in the log at
+startup.
+
 ## Delivery request
 
 Notifications are delivered as an HTTP `POST` to the configured webhook URL. Alongside the
