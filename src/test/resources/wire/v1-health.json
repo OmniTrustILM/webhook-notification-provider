@@ -1,0 +1,15 @@
+{
+  "status" : 200,
+  "contentType" : "application/json",
+  "body" : {
+    "description" : null,
+    "parts" : {
+      "database" : {
+        "description" : "Database connection ok",
+        "parts" : null,
+        "status" : "ok"
+      }
+    },
+    "status" : "ok"
+  }
+}

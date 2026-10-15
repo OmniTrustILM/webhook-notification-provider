@@ -1,0 +1,1 @@
+{"event":"certificate_status_changed","resource":"certificates","certificate":"CN=wire.example.com, O=Wire Golden, C=CZ","status":"revoked","daysLeft":30,"weight":0.75,"recipients":["alice@example.com","bob@example.com"],"subject":"wire.example.com","unicode":"Žluťoučký kůň úpěl ďábelské ódy ✓"}
